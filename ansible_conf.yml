@@ -21,5 +21,3 @@
         dest: /var/www/html/
         owner: root
         mode: '0777'
-
-salam
