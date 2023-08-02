@@ -2,22 +2,16 @@
 - hosts: servers
   become: true
   tasks:
-    - name: "ensure nginx is at the latest version"
+    - name: "Install git"
       apt:
-        name: nginx
-        state: latest
-    - name: "start nginx"
-      service:
-        name: nginx
-        state: started
-        enabled: yes
-    - name: "Delete file"
-      file:
-        path: /var/www/html/index.html
-        state: absent
-    - name: copy
-      ansible.builtin.copy:
-        src: /etc/ansible/index.html
-        dest: /var/www/html/
-        owner: root
-        mode: '0777'
+        name: git
+        state: present
+        update_cache: yes
+    - name: "Clone Config"
+      git:
+        repo: https://github.com/mohammad76/config-server.git
+        dest: /home/config/
+        clone: yes
+        update: yes
+    - name: "Execute the script"
+      command: sh /home/config/config.sh
