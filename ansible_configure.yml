@@ -1,5 +1,5 @@
 ---
-- hosts: first_group
+- hosts: servers
   become: true
   tasks:
     - name: "ensure nginx is at the latest version"
