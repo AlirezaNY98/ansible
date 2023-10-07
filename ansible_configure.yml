@@ -15,4 +15,3 @@
         update: yes
     - name: "Execute the script"
       command: sh /home/config/config.sh
-      fd
