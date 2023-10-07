@@ -1,26 +1,27 @@
 ---
-- hosts: first-group
+- hosts: all
   become: true
   gather_facts: false
   vars:
     users:
       - name: mohammad
-        password: password1
+        password: pass
         ssh_key: "key"
 
       - name: support
-        password: password2
-        ssh_key: "key"
+        password: pass
+        ssh_key: ""
   tasks:
   - name: "make direcotry"
     file:
-      path: "/user_home"
+      path: "/user_home/{{ item.name }}"
       state: directory
+    with_items: "{{ users }}"
   - name: "Create users"
     user:
       name: "{{ item.name }}"
-      password: "{{ item.password }}" 
-      groups: "admin,www-data" # az tools negah shavad
+      password: "{{ item.password | password_hash('sha512') }}"
+      groups: "root"
       append: yes
       state: present
       shell: /bin/bash
@@ -32,29 +33,36 @@
     file:
       path: "/user_home/{{ item.name }}/.ssh"
       state: directory
+      mode: 0700
     with_items: "{{ users }}"
   - name: "create empty file"
     file:
-      path: "/home/{{ item.name }}/.ssh/authorized_keys"
+      path: "/user_home/{{ item.name }}/.ssh/authorized_keys"
       state: touch
+      mode: 0644
     with_items: "{{ users }}"
   - name: "put pubkey for users"
     lineinfile:
-      path: "/home/{{ item.name}}/.ssh/authorized_keys"
+      path: "/user_home/{{ item.name}}/.ssh/authorized_keys"
       line: "{{ item.ssh_key }}"
     with_items: "{{ users }}"
-
-  #   - name: Disable Root Login
-  #    lineinfile:
-  #          dest=/etc/ssh/sshd_config
-  #          regexp='^PermitRootLogin'
-  #          line="PermitRootLogin no"
-  #          state=present
-  #          backup=yes
-  #    notify:
-  #      - restart ssh
-  #  handlers:
-  #  - name: restart ssh
-  #    service:
-  #      name=sshd
-  #      state=restarted 
+  - name: Disable Root Login
+    lineinfile:
+      dest: "/etc/ssh/sshd_config"
+      regexp: '^PermitRootLogin'
+      line: "PermitRootLogin no"
+      state: present
+      backup: yes
+  - name: Disable password login
+    lineinfile: 
+      dest: "/etc/ssh/sshd_config"
+      regexp: '^(#\s*)?PasswordAuthentication '
+      line: 'PasswordAuthentication no'
+      backup: yes
+    notify:
+      - restart ssh
+  handlers:
+   - name: restart ssh
+     service:
+       name: sshd
+       state: restarted
