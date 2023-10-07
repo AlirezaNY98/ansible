@@ -9,7 +9,7 @@
         update_cache: yes
     - name: "Clone Config"
       git:
-        repo: https://github.com/mohammad76/config-server.git
+        repo: 
         dest: /home/config/
         clone: yes
         update: yes
