@@ -1,0 +1,5 @@
+[servers]
+ip-address ansible_ssh_user=root ansible_ssh_pass="pass" ansible_ssh_port=port
+
+[all:vars]
+ansible_python_interpreter=/usr/bin/python3
