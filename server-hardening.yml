@@ -4,13 +4,13 @@
   gather_facts: false
   vars:
     users:
-      - name: name 1
-        password: pass
-        ssh_key: ""
+      - name: user-1
+        password: "password"
+        ssh_key: "ssh-key"
 
-      - name: name 2
-        password: pass
-        ssh_key: ""
+      - name: user-2
+        password: "password"
+        ssh_key: "ssh-key"
 
   tasks:
   - name: "make direcotry"
@@ -23,6 +23,8 @@
     user:
       name: "{{ item.name }}"
       password: "{{ item.password | password_hash('sha512') }}"
+      groups: "root"
+      append: yes
       state: present
       shell: /bin/bash
       createhome: yes
@@ -30,68 +32,84 @@
       update_password: on_create      
     with_items: "{{ users }}"
 
+  - name: "make direcotry for sudoers"
+    file:
+      path: "/etc/sudoers.d/{{ item.name }}"
+      state: touch
+    with_items: "{{ users }}"    
+
+  - name: "Add sudo privileges to specified users"
+    lineinfile:
+      path: "/etc/sudoers.d/{{ item.name }}"
+      line: "{{ item.name }} ALL=(ALL) ALL"
+    with_items: "{{ users }}"
+
   - name: "make direcotry"
     file:
       path: "/user_home/{{ item.name }}/.ssh"
       state: directory
-      mode: 0751
     with_items: "{{ users }}"
 
   - name: "create empty file"
     file:
       path: "/user_home/{{ item.name }}/.ssh/authorized_keys"
       state: touch
-      mode: 0644
     with_items: "{{ users }}"
 
   - name: "put pubkey for users"
-    lineinfile: 
-      path: "/user_home/{{ item.name }}/.ssh/authorized_keys"
+    lineinfile:
+      path: "/user_home/{{ item.name}}/.ssh/authorized_keys"
       line: "{{ item.ssh_key }}"
     with_items: "{{ users }}"
 
-  - name: "Allow sudo for users"
-    copy:
-      content: "{{ item.name }} ALL=(ALL) ALL"
-      dest: "/etc/sudoers.d/{{ item.name }}"
-      mode: 0600
-    with_items: "{{ users }}"
+  - name: "Disable Root Login"
+    lineinfile:
+      dest: "/etc/ssh/sshd_config"
+      regexp: '^PermitRootLogin'
+      line: "PermitRootLogin no"
+      state: present
+      backup: yes
 
-  - name: "Max auth check"
-    lineinfile: 
+  - name: "add MaxAuthTries"
+    lineinfile:
       dest: "/etc/ssh/sshd_config"
       regexp: '^MaxAuthTries'
-      line: 'MaxAuthTries 30'
+      line: "MaxAuthTries 30"
       state: present
 
-  - name: "disable empty password"
-    lineinfile: 
+  - name: "add PermitEmptyPasswords"
+    lineinfile:
       dest: "/etc/ssh/sshd_config"
       regexp: '^PermitEmptyPasswords'
-      line: 'PermitEmptyPasswords no'
+      line: "PermitEmptyPasswords no"
       state: present
 
-  - name: "disable kerberos auth"
-    lineinfile: 
+  - name: "add KerberosAuthentication"
+    lineinfile:
       dest: "/etc/ssh/sshd_config"
       regexp: '^KerberosAuthentication'
-      line: 'KerberosAuthentication no'
+      line: "KerberosAuthentication no"
       state: present
 
-  - name: "disable gssapi auth"
-    lineinfile: 
+  - name: "add GSSAPIAuthentication"
+    lineinfile:
       dest: "/etc/ssh/sshd_config"
       regexp: '^GSSAPIAuthentication'
-      line: 'GSSAPIAuthentication no'
+      line: "GSSAPIAuthentication no"
       state: present
 
-  - name: "enable pubkey auth"
+  - name: "add PubkeyAuthentication"
     lineinfile:
       dest: "/etc/ssh/sshd_config"
       regexp: '^PubkeyAuthentication'
-      line: 'PubkeyAuthentication yes'
+      line: "PubkeyAuthentication yes"
       state: present
 
+  - name: "Disable password login"
+    lineinfile: 
+      dest: "/etc/ssh/sshd_config"
+      regexp: '^(#\s*)?PasswordAuthentication'
+      line: 'PasswordAuthentication no'
     notify:
       - restart ssh
       
